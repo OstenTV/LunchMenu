@@ -2,7 +2,7 @@ Start-Transcript -Path "C:\TS\log\LunchMenu_v1_GetData\script.log" -Append
 $LogPath = "C:\TS\log\LunchMenu_v1_GetData";
 $LogRetention = New-TimeSpan -Start (Get-Date).AddYears(-10) -End (Get-Date);
 
-$OutputDir = "D:\VirtualSites\lunch.tosi.dk\api\v1";
+$OutputDir = "D:\VirtualSites\LunchAPI\v1";
 
 Import-Module LunchProvider, LogUtil -Force;
 
