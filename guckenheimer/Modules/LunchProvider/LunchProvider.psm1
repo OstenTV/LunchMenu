@@ -4,15 +4,14 @@ function Get-LunchWeekhMenu {
     [CmdletBinding()]
     Param (
         [Parameter(Mandatory=$false)]
-        [int] $Language = 0,
+        [int[]] $Language = (0,1),
         [Parameter(Mandatory=$false)]
         [string] $Uri = "https://www.guckenheimer.dk/banner/weekmenu/42"
     )
 
     Write-Verbose "Getting Lunch Menu from $Uri";
 
-    $FlatMenu = @();
-    $Menu = @();
+    $MenuInAllLanguages = @();
 
     $DayNameIndex = @{
         Mandag = 1;
@@ -20,6 +19,12 @@ function Get-LunchWeekhMenu {
         Onsdag = 3;
         Torsdag = 4;
         Fredag = 5;
+    },@{
+        Monday = 1;
+        Tuesday = 2;
+        Wednesday = 3;
+        Thursday = 4;
+        Friday = 5;
     }
 
     # Get the HTML of the URI.
@@ -30,69 +35,83 @@ function Get-LunchWeekhMenu {
     [int]$WeekNumber = $HTML.getElementsByClassName("menu-of-the-week")[0].Children[0].Children[0].Children[0].InnerText.Replace("Ugens menu ","");
     Write-Verbose "Detected weeknumber $WeekNumber";
 
-    $WeekMenu = $HTML.getElementsByClassName("weekdays")[$Language];
-    $Days = $WeekMenu.getElementsByClassName("days");
+    foreach ($Lang in $Language) {
 
-    foreach ($Day in $Days) {
+        $FlatMenu = @();
+        $Menu = @();
+
+        $WeekMenu = $HTML.getElementsByClassName("weekdays")[$Lang];
+        $Days = $WeekMenu.getElementsByClassName("days");
+
+        foreach ($Day in $Days) {
     
-        # Get list of dish strings for the given day.
-        $TextInfo = (Get-Culture).TextInfo
-        $DayName = $TextInfo.ToTitleCase($Day.children[0].innerHTML.ToLower());
-        Write-Verbose "Parsing menu for $DayName";
-        $DayMenu = $Day.children[1].children;
-        $strings = $DayMenu | % {$_.innerText};
+            # Get list of dish strings for the given day.
+            $TextInfo = (Get-Culture).TextInfo
+            $DayName = $TextInfo.ToTitleCase($Day.children[0].innerHTML.ToLower());
+            Write-Verbose "Parsing menu for $DayName";
+            $DayMenu = $Day.children[1].children;
+            $strings = $DayMenu | % {$_.innerText};
         
-        # Loop through the strings
-        Foreach ($string in $strings) {
+            # Loop through the strings
+            Foreach ($string in $strings) {
         
-            # Extract the type
-            $type = ($string -split ":")[0] -replace '• ', ''
-            Write-Verbose "Parsing $type";
+                # Extract the type
+                $type = ($string -split ":")[0] -replace '• ', ''
+                Write-Verbose "Parsing $type";
 
-            # Split the dishes by '/'
-            $dishes = ($string -split ':', 2)[1] -split "\) / " | ForEach-Object {
-                $str = $_.Trim();
-                if (!($str -match '\)$')) {
-                    $str + " )";
-                    Write-Verbose "$type has multiple dishes";
-                } else {
-                    $str;
-                    Write-Verbose "$type has one dish";
+                # Split the dishes by '/'
+                $dishes = ($string -split ':', 2)[1] -split "\) / " | ForEach-Object {
+                    $str = $_.Trim();
+                    if (!($str -match '\)$')) {
+                        $str + " )";
+                        Write-Verbose "$type has multiple dishes";
+                    } else {
+                        $str;
+                        Write-Verbose "$type has one dish";
+                    }
                 }
-            }
 
-            # For each dish, extract allergens and create a PSCustomObject with the extracted information
-            $dishes | ForEach-Object {
-                $dish = $_.Trim() -replace ' \(.*', ''
-                $allergener = $_.Trim() -replace '.*\( Allergener: (.*?) \).*', '$1'
+                # For each dish, extract allergens and create a PSCustomObject with the extracted information
+                $dishes | ForEach-Object {
+                    $dish = $_.Trim() -replace ' \(.*', ''
+                    $allergener = $_.Trim() -replace '.*\( Allergener: (.*?) \).*', '$1'
 
-                $FlatMenu += [PSCustomObject]@{
-                    Day = $DayName
-                    Type = $type
-                    Dish = $dish
-                    Allergener = $allergener
+                    $FlatMenu += [PSCustomObject]@{
+                        Day = $DayName
+                        Type = $type
+                        Dish = $dish
+                        Allergener = $allergener
+                    }
                 }
             }
         }
-    }
 
-    Write-Verbose "Finished parsing menu";
+        Write-Verbose "Finished parsing menu";
 
-    # Convert the flat menu to a object groupped by the name of the weekday
-    $Collection = $FlatMenu | Group-Object -Property Day
-    foreach ($Group in $Collection) {
-        $Menu += [PSCustomObject]@{
-            Day = $Group.Name
-            DayIndex = $DayNameIndex.$($Group.Name)
-            Menu = $Group.Group | select Type, Dish, Allergener;
+        # Convert the flat menu to a object groupped by the name of the weekday
+        $Collection = $FlatMenu | Group-Object -Property Day
+        foreach ($Group in $Collection) {
+            $Menu += [PSCustomObject]@{
+                Day = $Group.Name
+                DayIndex = $DayNameIndex[$Lang].$($Group.Name)
+                Menu = $Group.Group | select Type, Dish, Allergener;
+            }
         }
+
+        $MenuInAllLanguages += [PSCustomObject]@{
+            Language = $Lang
+            Menu = $Menu
+        }
+
     }
+
+    
 
     Write-Verbose "Finished grouping menu by day";
 
     return [PSCustomObject]@{
         Weeknumber = $WeekNumber
-        Menu = $Menu
+        Menus = $MenuInAllLanguages
         Timestamp = Get-Date
     }
 

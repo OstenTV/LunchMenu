@@ -12,7 +12,7 @@ if ($env:USERNAME -like "admin*") {
 
 if (($Result = Get-LunchWeekhMenu)) {
 
-    $menu = $Result.Menu;
+    $menu = $Result.Menus[0].Menu;
     $weeknumber = $Result.Weeknumber;
     $frag = @()
     $outfilehtml = "$OutputDir\$(Get-Date -UFormat "%Y")-$($weeknumber).html"
