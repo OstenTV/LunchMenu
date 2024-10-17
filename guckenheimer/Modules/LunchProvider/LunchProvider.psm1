@@ -89,7 +89,7 @@ function Get-LunchWeekhMenu {
                     }
                     
                     $FlatMenu += [PSCustomObject]@{
-                        Day = $DayName
+                        Day = $DayName.Trim()
                         Type = $type
                         Dish = $dish
                         Allergener = $allergener
