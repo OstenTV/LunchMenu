@@ -73,9 +73,21 @@ function Get-LunchWeekhMenu {
 
                 # For each dish, extract allergens and create a PSCustomObject with the extracted information
                 $dishes | ForEach-Object {
-                    $dish = $_.Trim() -replace ' \(.*', ''
-                    $allergener = $_.Trim() -replace '.*\( Allergener: (.*?) \).*', '$1'
-
+                    
+                    $S = $_;
+                    $dish = $S.Trim() -replace ' \(.*', ''
+                    
+                    switch ($Lang)
+                    {
+                        0 {
+                            $allergener = $S.Trim() -replace '.*\( Allergener: (.*?) \).*', '$1'
+                        }
+                        1 {
+                            $allergener = $S.Trim() -replace '.*\( Allergens: (.*?) \).*', '$1'
+                        }
+                        Default {}
+                    }
+                    
                     $FlatMenu += [PSCustomObject]@{
                         Day = $DayName
                         Type = $type
@@ -104,8 +116,6 @@ function Get-LunchWeekhMenu {
         }
 
     }
-
-    
 
     Write-Verbose "Finished grouping menu by day";
 
