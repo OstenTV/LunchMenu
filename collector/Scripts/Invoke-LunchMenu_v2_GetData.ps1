@@ -1,12 +1,72 @@
 Start-Transcript -Path "C:\TS\log\LunchMenu_v2_GetData\script.log" -Append
 $LogPath = "C:\TS\log\LunchMenu_v2_GetData";
 $LogRetention = New-TimeSpan -Start (Get-Date).AddYears(-10) -End (Get-Date);
-
 $OutputDir = "D:\VirtualSites\LunchAPI\v2";
-
+$DateFormat = "yyyy-MM-dd";
+$DateTimeUFormat = "%Y-%m-%d %T %Z";
 $SQLConnectionString = "Server=localhost;Database=FoodService;Encrypt=True;TrustServerCertificate=True;Integrated Security=SSPI"
-if (!(Invoke-Sqlcmd -ConnectionString $SQLConnectionString  -Query "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE'")) {
-    Throw "SQL Server not alive!`n$_";
+$TablePrefix = "lunch";
+
+$SQLConnection = New-Object System.Data.SqlClient.SqlConnection;
+$SQLConnection.ConnectionString = $SQLConnectionString;
+$SQLConnection.Open();
+
+function Read-SQL {
+    
+    Param (
+        [Parameter(Mandatory=$true)]
+        [System.Data.Common.DbConnection]$SQLConnection,
+        [Parameter(Mandatory=$true)]
+        [string] $Query,
+        [Parameter(Mandatory=$false)]
+        [HashTable]$SQLParameters
+    )
+
+    $DataTable = New-Object System.Data.DataTable
+    $SQLCommand = $SQLConnection.CreateCommand();
+    $SQLCommand.CommandText = $Query;
+
+    if ($SQLParameters) {
+        foreach ($Name in $SQLParameters.Keys) {
+            $Value = $SQLParameters.$Name;
+            $SQLCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("$Name", $Value)));
+        }
+    }
+
+    $SQLReader = $SQLCommand.ExecuteReader();
+    $DataTable.Load($SQLReader);
+    $SQLReader.Close();
+
+    return $DataTable;
+
+}
+
+function Write-SQL {
+    
+    Param (
+        [Parameter(Mandatory=$true)]
+        [System.Data.Common.DbConnection]$SQLConnection,
+        [Parameter(Mandatory=$true)]
+        [string] $Query,
+        [Parameter(Mandatory=$false)]
+        [HashTable]$SQLParameters
+    )
+
+    $QUery = $Query;
+    $SQLCommand = $SQLConnection.CreateCommand();
+    $SQLCommand.CommandText = $query;
+
+    if ($SQLParameters) {
+        foreach ($Name in $SQLParameters.Keys) {
+            $Value = $SQLParameters.$Name;
+            $SQLCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("$Name", $Value)))
+        }
+    }
+
+    $SQLAffectedRows = $SQLCommand.ExecuteNonQuery();
+
+    return $SQLAffectedRows;
+
 }
 
 Import-Module SQLServer -Force;
@@ -16,11 +76,54 @@ if ($env:USERNAME -like "admin*") {
     Import-Module LunchProvider, LogUtil -Force;
 }
 
+$LocationID = 1;
+$Languages = Read-SQL -SQLConnection $SQLConnection -Query "SELECT * FROM [$($TablePrefix)_language]"
+$DishTypes = Read-SQL -SQLConnection $SQLConnection -Query "SELECT * FROM [$($TablePrefix)_dish_type]";
+
 if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
 
-    # TODO Do stuff with the $Result and import into DB
+    $Weeknumber = $Result.Weeknumber;
+    $Year = $Result.Timestamp | Get-Date -UFormat "%Y"
+    $UnixTimestamp  = ([DateTimeOffset]$Result.Timestamp).ToUnixTimeSeconds();
+    $MenuInAllLanguages = $Result.Menus;
 
-    Get-LunchAssets | % {
+    foreach ($MenuData in $MenuInAllLanguages) {
+        
+        $WeekMenu = $MenuData.Menu;
+        $LanguageID = $MenuData.Language;
+        foreach ($Day in $WeekMenu) {
+            
+            $Menu = $Day.Menu;
+            $DayIndex = $Day.DayIndex;
+            $MealByType = ($Menu | group -Property Type);
+            foreach ($MealGroup in $MealByType) {
+                
+                [Array]$Meal = $MealGroup.Group;
+                $DishAsJSON = $Meal.Dish | ConvertTo-Json;
+                $AllergenerAsJSON = $Meal.Allergener | ConvertTo-Json;
+
+                #Check if the same dish already exist in DB.
+                $TypeName = $Dish.Type.ToLower().Replace(" ","")
+                $TypeID = ($DishTypes | ? {$_.name -eq $TypeName}).id
+                $Query = "SELECT [dish],[allergens] FROM [lunch_dish] WHERE [year] = $Year AND [week] = $Weeknumber AND [day] = $DayIndex AND [type_id] = $TypeID AND [dish] = @dish AND [allergens] = @allergens";
+                $Parameters = @{
+                    "@dish" = $DishAsJSON;
+                    "@allergens" = $AllergenerAsJSON
+                }
+                $ExistingDishes = Read-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $Parameters;
+                
+
+
+            }
+        }
+    }
+
+
+
+
+
+
+    Get-GuckenheimerLunchAssets | % {
         if (!($_.href -like "*platefall*")) {
             
             if (!(Test-Path ($dir = "$OutputDir\assets\$(Get-Date -UFormat "%Y")-$($weeknumber)\$(Get-Date -UFormat %u)") )) {
@@ -45,5 +148,7 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
     }
 
 }
+
+$SQLConnection.Close();
 
 Stop-Transcript
