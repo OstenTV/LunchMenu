@@ -1,14 +1,14 @@
 $Sources = @(
     @{
-        Source="C:\Users\admin_tosi\Documents\GitHub\LunchMenu\guckenheimer\Modules\LogUtil"
+        Source="C:\Users\admin_tosi\Documents\GitHub\LunchMenu\collector\Modules\LogUtil"
         Destination="C:\Program Files\WindowsPowerShell\Modules\LogUtil"
     },
     @{
-        Source="C:\Users\admin_tosi\Documents\GitHub\LunchMenu\guckenheimer\Modules\LunchProvider"
+        Source="C:\Users\admin_tosi\Documents\GitHub\LunchMenu\collector\Modules\LunchProvider"
         Destination="C:\Program Files\WindowsPowerShell\Modules\LunchProvider"
     },
     @{
-        Source="C:\Users\admin_tosi\Documents\GitHub\LunchMenu\guckenheimer\Scripts"
+        Source="C:\Users\admin_tosi\Documents\GitHub\LunchMenu\collector\Scripts"
         Destination="C:\TS\Scripts"
     }
 )
