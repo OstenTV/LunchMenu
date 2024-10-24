@@ -10,7 +10,7 @@ if ($env:USERNAME -like "admin*") {
     Import-Module LunchProvider, LogUtil -Force;
 }
 
-if (($Result = Get-LunchWeekhMenu)) {
+if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
 
     $menu = $Result.Menus[0].Menu;
     $weeknumber = $Result.Weeknumber;
@@ -67,7 +67,7 @@ table { padding-left:50px;padding-right:50px;width:100%; }
     Copy-Item -Path $outfilehtml -Destination $outfilehtmllatest -Force;
     Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Updated $outfilehtmllatest.";
 
-    Get-LunchAssets | % {
+    Get-GuckenheimerLunchAssets | % {
         if (!($_.href -like "*platefall*")) {
             
             if (!(Test-Path ($dir = "$OutputDir\assets\$(Get-Date -UFormat "%Y")-$($weeknumber)\$(Get-Date -UFormat %u)") )) {

@@ -16,7 +16,7 @@ if ($env:USERNAME -like "admin*") {
     Import-Module LunchProvider, LogUtil -Force;
 }
 
-if (($Result = Get-LunchWeekhMenu)) {
+if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
 
     # TODO Do stuff with the $Result and import into DB
 

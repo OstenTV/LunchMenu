@@ -1,5 +1,5 @@
 ﻿
-function Get-LunchWeekhMenu {
+function Get-GuckenheimerLunchWeekhMenu {
     
     [CmdletBinding()]
     Param (
@@ -127,7 +127,7 @@ function Get-LunchWeekhMenu {
 
 }
 
-function Get-LunchAssets {
+function Get-GuckenheimerLunchAssets {
     
     [CmdletBinding()]
     Param (
