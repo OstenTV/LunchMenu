@@ -5,7 +5,7 @@ $LogRetention = New-TimeSpan -Start (Get-Date).AddYears(-10) -End (Get-Date);
 $OutputDir = "D:\VirtualSites\LunchAPI\v1";
 
 if ($env:USERNAME -like "admin*") {
-    Import-Module "C:\Users\$($env:USERNAME)\Documents\GitHub\LunchMenu\guckenheimer\Modules\LunchProvider\LunchProvider.psm1", "C:\Users\$($env:USERNAME)\Documents\GitHub\LunchMenu\guckenheimer\Modules\LogUtil\LogUtil.psm1" -Force;
+    Import-Module "C:\Users\$($env:USERNAME)\Documents\GitHub\LunchMenu\collector\Modules\LunchProvider\LunchProvider.psm1", "C:\Users\$($env:USERNAME)\Documents\GitHub\LunchMenu\collector\Modules\LogUtil\LogUtil.psm1" -Force;
 } else {
     Import-Module LunchProvider, LogUtil -Force;
 }
