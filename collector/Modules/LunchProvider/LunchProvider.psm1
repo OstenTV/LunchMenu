@@ -71,6 +71,8 @@ function Get-GuckenheimerLunchWeekhMenu {
                     }
                 }
 
+                $i = 1;
+
                 # For each dish, extract allergens and create a PSCustomObject with the extracted information
                 $dishes | ForEach-Object {
                     
@@ -93,7 +95,9 @@ function Get-GuckenheimerLunchWeekhMenu {
                         Type = $type
                         Dish = $dish
                         Allergener = $allergener
+                        Iterator = $i
                     }
+                    $i++
                 }
             }
         }
@@ -106,7 +110,7 @@ function Get-GuckenheimerLunchWeekhMenu {
             $Menu += [PSCustomObject]@{
                 Day = $Group.Name
                 DayIndex = $DayNameIndex[$Lang].$($Group.Name)
-                Menu = $Group.Group | select Type, Dish, Allergener;
+                Menu = $Group.Group | select Type, Dish, Allergener, Iterator;
             }
         }
 
