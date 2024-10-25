@@ -29,13 +29,14 @@ function Read-SQL {
     if ($SQLParameters) {
         foreach ($Name in $SQLParameters.Keys) {
             $Value = $SQLParameters.$Name;
-            $SQLCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("$Name", $Value)));
+            $SQLCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("$Name", $Value))) | Out-Null;
         }
     }
 
     $SQLReader = $SQLCommand.ExecuteReader();
     $DataTable.Load($SQLReader);
     $SQLReader.Close();
+    $SQLCommand.Dispose();
 
     return $DataTable;
 
@@ -59,7 +60,7 @@ function Write-SQL {
     if ($SQLParameters) {
         foreach ($Name in $SQLParameters.Keys) {
             $Value = $SQLParameters.$Name;
-            $SQLCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("$Name", $Value)))
+            $SQLCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("$Name", $Value))) | Out-Null;
         }
     }
 
