@@ -26,6 +26,9 @@ function Get-GuckenheimerLunchWeekhMenu {
         Thursday = 4;
         Friday = 5;
     }
+    $LanguageNameIndex = @(
+        "danish","english"
+    )
 
     # Get the HTML of the URI.
     $R = Invoke-WebRequest -Uri $Uri;
@@ -116,6 +119,7 @@ function Get-GuckenheimerLunchWeekhMenu {
 
         $MenuInAllLanguages += [PSCustomObject]@{
             Language = $Lang
+            LanguageName = $LanguageNameIndex[$lang]
             Menu = $Menu
         }
 
