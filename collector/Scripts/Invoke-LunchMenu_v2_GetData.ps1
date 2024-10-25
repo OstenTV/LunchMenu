@@ -1,7 +1,8 @@
+$VerbosePreference = "Continue";
 Start-Transcript -Path "C:\TS\log\LunchMenu_v2_GetData\script.log" -Append
 $LogPath = "C:\TS\log\LunchMenu_v2_GetData";
 $LogRetention = New-TimeSpan -Start (Get-Date).AddYears(-10) -End (Get-Date);
-$OutputDir = "D:\VirtualSites\LunchAPI\v2";
+$AssetsDir = "D:\VirtualSites\LunchAPI\v2\assets";
 $DateFormat = "yyyy-MM-dd";
 $DateTimeUFormat = "%Y-%m-%d %T %Z";
 $SQLConnectionString = "Server=localhost;Database=FoodService;Encrypt=True;TrustServerCertificate=True;Integrated Security=SSPI"
@@ -33,6 +34,7 @@ function Read-SQL {
         }
     }
 
+    Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Execute reading SQL Query." -AdditionalFields @{"Query"=$Query};
     $SQLReader = $SQLCommand.ExecuteReader();
     $DataTable.Load($SQLReader);
     $SQLReader.Close();
@@ -53,7 +55,6 @@ function Write-SQL {
         [HashTable]$SQLParameters
     )
 
-    $QUery = $Query;
     $SQLCommand = $SQLConnection.CreateCommand();
     $SQLCommand.CommandText = $query;
 
@@ -64,6 +65,7 @@ function Write-SQL {
         }
     }
 
+    Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Execute writing SQL Query." -AdditionalFields @{"Query"=$Query};
     $SQLAffectedRows = $SQLCommand.ExecuteNonQuery();
     $SQLCommand.Dispose()
 
@@ -76,10 +78,39 @@ if ($env:USERNAME -like "admin*") {
 } else {
     Import-Module LunchProvider, LogUtil -Force;
 }
+if (!(Test-Path -Path $AssetsDir )) {
+    mkdir $AssetsDir
+}
 
+$CurrentDayOFWeek = (Get-Date).DayOfWeek.value__;
 $LocationID = 1;
 $Languages = Read-SQL -SQLConnection $SQLConnection -Query "SELECT * FROM [$($TablePrefix)_language]"
-$DishTypes = Read-SQL -SQLConnection $SQLConnection -Query "SELECT * FROM [$($TablePrefix)_dish_type]";
+$DishTypes = Read-SQL -SQLConnection $SQLConnection -Query "SELECT * FROM [$($TablePrefix)_type]";
+
+$LunchAssets = Get-GuckenheimerLunchAssets
+
+foreach ($AssetData in $LunchAssets) {
+    if (!($AssetData.href -like "*platefall*")) {
+        $OutFile = "$AssetsDir\$($AssetData.asset).png";
+        
+        #Check if the same asset already exist in DB.
+        $Query = "SELECT [asset] FROM [$($TablePrefix)_asset] WHERE [asset] = @asset";
+        $AssetParameters = @{
+            "@asset" = $AssetData.asset;
+        }
+        $ExistingAsset = Read-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $AssetParameters;
+        if (!($ExistingAsset)) {
+            Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Downloading asset $OutFile.";
+            $Query = "INSERT INTO [$($TablePrefix)_asset] ([asset]) VALUES (@asset)";
+            $SQLResult = Write-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $AssetParameters;
+            Invoke-WebRequest -Uri $AssetData.href -OutFile $OutFile;
+        } else {
+            Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Asset $outfile already exists.";
+        }
+    } else {
+        Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "No assets available for $($_.Dish).";
+    }
+}
 
 if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
     
@@ -88,11 +119,13 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
     $MissingDushTypes = $ProviderDishTypes | ? {($_ -replace "[^a-zA-Z]", "").ToLower() -notin $DishTypes.name};
     if ($MissingDushTypes) {
         foreach ($MissingDushType in $MissingDushTypes) {
+            $MissingDushTypeName = ($MissingDushType -replace "[^a-zA-Z]", "").ToLower();
+            Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 6 -Text "Found new dish type with name: $MissingDushTypeName.";
             $DishTypeParameters = @{
-                "@name" = ($MissingDushType -replace "[^a-zA-Z]", "").ToLower();
+                "@name" = $MissingDushTypeName;
                 "@displayname" = $MissingDushType;
             }
-            $Query = "INSERT INTO [$($TablePrefix)_dish_type] ([name], [displayname] VALUES (@name,@displayname)";
+            $Query = "INSERT INTO [$($TablePrefix)_type] ([name], [displayname] VALUES (@name,@displayname)";
             $SQLResult = Write-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishTypeParameters;
         }
         $DishTypes = Read-SQL -SQLConnection $SQLConnection -Query "SELECT * FROM [$($TablePrefix)_dish_type]";
@@ -113,11 +146,11 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
             $DayIndex = $Day.DayIndex;
             foreach ($Dish in $Menu) {
                 
-                $TypeName = $Dish.Type.ToLower().Replace(" ","")
+                $TypeName = ($Dish.Type -replace "[^a-zA-Z]", "").ToLower()
                 $TypeID = ($DishTypes | ? {$_.name -eq $TypeName}).id
                 
                 #Check if the same dish already exist in DB.
-                $Query = "SELECT [dish],[allergens] FROM [lunch_dish] WHERE [location_id] = @locationid AND [language_id] = @languageid AND [year] = @Year AND [week] = @weeknumber AND [day] = @dayindex AND [type_id] = @typeid AND [dish] = @dish AND [allergens] = @allergens AND [iterator] = @iterator";
+                $Query = "SELECT [dish],[allergens] FROM [$($TablePrefix)_dish] WHERE [location_id] = @locationid AND [language_id] = @languageid AND [year] = @Year AND [week] = @weeknumber AND [day] = @dayindex AND [type_id] = @typeid AND [dish] = @dish AND [allergens] = @allergens AND [iterator] = @iterator";
                 $DishParameters = @{
                     "@locationid" = $LocationID;
                     "@languageid" = $LanguageID;
@@ -129,9 +162,10 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
                     "@allergens" = $Dish.Allergener;
                     "@iterator" = $Dish.Iterator;
                 }
+                
                 $ExistingDish = Read-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishParameters;
                 if (!($ExistingDish)) {
-                    $Query = "INSERT INTO [lunch_dish] ([location_id], [language_id], [year], [week], [day], [type_id], [dish], [allergens], [iterator]) VALUES (@locationid,@languageid,@Year,@weeknumber,@dayindex,@typeid,@dish,@allergens,@iterator)";
+                    $Query = "INSERT INTO [$($TablePrefix)_dish] ([location_id], [language_id], [year], [week], [day], [type_id], [dish], [allergens], [iterator]) VALUES (@locationid,@languageid,@Year,@weeknumber,@dayindex,@typeid,@dish,@allergens,@iterator)";
                     $SQLResult = Write-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishParameters;
                 }
 
@@ -139,29 +173,7 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
         }
     }
 
-    Get-GuckenheimerLunchAssets | % {
-        if (!($_.href -like "*platefall*")) {
-            
-            if (!(Test-Path ($dir = "$OutputDir\assets\$(Get-Date -UFormat "%Y")-$($weeknumber)\$(Get-Date -UFormat %u)") )) {
-                mkdir $dir
-            }
-
-            $outfile = "$dir\$(($_.Dish -replace ' ','').ToLower()).png";
-
-            # TODO Make some logic to check if the image is updated or is the same.
-            $IsUpdated = $true;
-
-            if (!(Test-Path -Path $outfile) -or $IsUpdated) {
-                Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Downloading asset $outfile.";
-                Invoke-WebRequest -Uri $_.href -OutFile $outfile;
-            } else {
-                Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Asset $outfile already exists.";
-            }
-            
-        } else {
-            Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "No assets available for $($_.Dish).";
-        }
-    }
+    Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Finished processing lunch data.";
 
 }
 

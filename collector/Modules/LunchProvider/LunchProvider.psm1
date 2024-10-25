@@ -163,17 +163,21 @@ function Get-GuckenheimerLunchAssets {
 
         if (($Dishes = $HTML.GetElementsByClassName("normal-image")) -ne $null) {
             foreach ($Dish in $Dishes) {
+                $href = $Dish.GetElementsByClassName("station-plate-image")[0].Children[0].href;
                 $result += [PSCustomObject]@{
                     Timestamp = Get-Date
-                    Dish = $Dish.GetElementsByClassName("title")[0].innerText
-                    href = $Dish.GetElementsByClassName("station-plate-image")[0].Children[0].href
+                    Dish = $Dish.GetElementsByClassName("title")[0].innerText;
+                    href = $href;
+                    asset = $href.Split("/")[-1]
                 }
             }
         } else {
+            $href = $HTML.GetElementsByClassName("station-plate-image")[0].Children[0].href
             $result += [PSCustomObject]@{
-                Timestamp = Get-Date
-                Dish = $HTML.GetElementsByClassName("heading")[0].innerText
-                href = $HTML.GetElementsByClassName("station-plate-image")[0].Children[0].href
+                Timestamp = Get-Date;
+                Dish = $HTML.GetElementsByClassName("heading")[0].innerText;
+                href = $href;
+                asset = $href.Split("/")[-1]
             }
         }
     }
