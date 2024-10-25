@@ -65,6 +65,7 @@ function Write-SQL {
     }
 
     $SQLAffectedRows = $SQLCommand.ExecuteNonQuery();
+    $SQLCommand.Dispose()
 
     return $SQLAffectedRows;
 
@@ -105,38 +106,38 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
     foreach ($MenuData in $MenuInAllLanguages) {
         
         $WeekMenu = $MenuData.Menu;
-        $LanguageID = $MenuData.Language;
+        $LanguageID = $MenuData.Language+1;
         foreach ($Day in $WeekMenu) {
             
             $Menu = $Day.Menu;
             $DayIndex = $Day.DayIndex;
-            $MealByType = ($Menu | group -Property Type);
-            foreach ($MealGroup in $MealByType) {
+            foreach ($Dish in $Menu) {
                 
-                [Array]$Meal = $MealGroup.Group;
-                $DishAsJSON = $Meal.Dish | ConvertTo-Json;
-                $AllergenerAsJSON = $Meal.Allergener | ConvertTo-Json;
-
-                #Check if the same dish already exist in DB.
                 $TypeName = $Dish.Type.ToLower().Replace(" ","")
                 $TypeID = ($DishTypes | ? {$_.name -eq $TypeName}).id
-                $Query = "SELECT [dish],[allergens] FROM [lunch_dish] WHERE [year] = $Year AND [week] = $Weeknumber AND [day] = $DayIndex AND [type_id] = $TypeID AND [dish] = @dish AND [allergens] = @allergens";
-                $Parameters = @{
-                    "@dish" = $DishAsJSON;
-                    "@allergens" = $AllergenerAsJSON
-                }
-                $ExistingDishes = Read-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $Parameters;
                 
-
+                #Check if the same dish already exist in DB.
+                $Query = "SELECT [dish],[allergens] FROM [lunch_dish] WHERE [location_id] = @locationid AND [language_id] = @languageid AND [year] = @Year AND [week] = @weeknumber AND [day] = @dayindex AND [type_id] = @typeid AND [dish] = @dish AND [allergens] = @allergens AND [iterator] = @iterator";
+                $DishParameters = @{
+                    "@locationid" = $LocationID;
+                    "@languageid" = $LanguageID;
+                    "@year" = $year;
+                    "@weeknumber" = $Weeknumber;
+                    "@dayindex" = $DayIndex;
+                    "@typeid" = $TypeID;
+                    "@dish" = $Dish.Dish;
+                    "@allergens" = $Dish.Allergener;
+                    "@iterator" = $Dish.Iterator;
+                }
+                $ExistingDish = Read-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishParameters;
+                if (!($ExistingDish)) {
+                    $Query = "INSERT INTO [lunch_dish] ([location_id], [language_id], [year], [week], [day], [type_id], [dish], [allergens], [iterator]) VALUES (@locationid,@languageid,@Year,@weeknumber,@dayindex,@typeid,@dish,@allergens,@iterator)";
+                    $SQLResult = Write-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishParameters;
+                }
 
             }
         }
     }
-
-
-
-
-
 
     Get-GuckenheimerLunchAssets | % {
         if (!($_.href -like "*platefall*")) {
