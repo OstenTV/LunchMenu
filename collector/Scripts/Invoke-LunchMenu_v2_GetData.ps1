@@ -82,7 +82,22 @@ $Languages = Read-SQL -SQLConnection $SQLConnection -Query "SELECT * FROM [$($Ta
 $DishTypes = Read-SQL -SQLConnection $SQLConnection -Query "SELECT * FROM [$($TablePrefix)_dish_type]";
 
 if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
-
+    
+    # Detect and add missing dish types.
+    $ProviderDishTypes = $Result.Menus.Menu.Menu.Type | select -Unique;
+    $MissingDushTypes = $ProviderDishTypes | ? {($_ -replace "[^a-zA-Z]", "").ToLower() -notin $DishTypes.name};
+    if ($MissingDushTypes) {
+        foreach ($MissingDushType in $MissingDushTypes) {
+            $DishTypeParameters = @{
+                "@name" = ($MissingDushType -replace "[^a-zA-Z]", "").ToLower();
+                "@displayname" = $MissingDushType;
+            }
+            $Query = "INSERT INTO [$($TablePrefix)_dish_type] ([name], [displayname] VALUES (@name,@displayname)";
+            $SQLResult = Write-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishTypeParameters;
+        }
+        $DishTypes = Read-SQL -SQLConnection $SQLConnection -Query "SELECT * FROM [$($TablePrefix)_dish_type]";
+    }
+    
     $Weeknumber = $Result.Weeknumber;
     $Year = $Result.Timestamp | Get-Date -UFormat "%Y"
     $UnixTimestamp  = ([DateTimeOffset]$Result.Timestamp).ToUnixTimeSeconds();
