@@ -1,6 +1,6 @@
 $VerbosePreference = "Continue";
-Start-Transcript -Path "C:\TS\log\LunchMenu_v2_GetData\script.log" -Append
-$LogPath = "C:\TS\log\LunchMenu_v2_GetData";
+Start-Transcript -Path "C:\TS\log\LunchProvider-Copenhagen_collector\script.log" -Append
+$LogPath = "C:\TS\log\LunchProvider-Copenhagen_collector";
 $LogRetention = New-TimeSpan -Start (Get-Date).AddYears(-10) -End (Get-Date);
 $AssetsDir = "D:\VirtualSites\LunchAPI\v2\assets";
 $DateFormat = "yyyy-MM-dd";
