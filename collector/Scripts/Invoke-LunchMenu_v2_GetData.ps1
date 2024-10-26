@@ -108,7 +108,11 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
     }
     
     $Weeknumber = $Result.Weeknumber;
-    $Year = $Result.Timestamp | Get-Date -UFormat "%Y"
+    $Year = $Result.Timestamp | Get-Date -UFormat "%Y";
+    # if are not in january yet, but the provider has published menu for week 1, then we must assume that is for next year. (I.e. they publish week 1 on december 31)
+    if (($Weeknumber -eq 1) -and ($Result.Timestamp.Month -ne 1)) {
+        $Year++;
+    }
     $UnixTimestamp  = ([DateTimeOffset]$Result.Timestamp).ToUnixTimeSeconds();
     $MenuInAllLanguages = $Result.Menus;
 
