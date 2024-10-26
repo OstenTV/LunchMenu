@@ -151,33 +151,62 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
 
     Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Finished processing lunch data.";
 
-}
+    $LunchAssets = Get-GuckenheimerLunchAssets
 
-$LunchAssets = Get-GuckenheimerLunchAssets
+    foreach ($AssetData in $LunchAssets) {
+        if (!($AssetData.href -like "*platefall*")) {
+            $OutFile = "$AssetsDir\$($AssetData.asset).png";
+            $TypeName = ($AssetData.Dish -replace "[^a-zA-Z]", "").ToLower()
+            $TypeID = ($DishTypes | ? {$_.name -eq $TypeName}).id
 
-foreach ($AssetData in $LunchAssets) {
-    if (!($AssetData.href -like "*platefall*")) {
-        $OutFile = "$AssetsDir\$($AssetData.asset).png";
-        
-        #Check if the same asset already exist in DB.
-        $Query = "SELECT [asset] FROM [$($TablePrefix)_asset] WHERE [asset] = @asset";
-        $AssetParameters = @{
-            "@asset" = $AssetData.asset;
-        }
-        $ExistingAsset = Read-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $AssetParameters;
-        if (!($ExistingAsset)) {
-            Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Downloading asset $OutFile.";
-            $Query = "INSERT INTO [$($TablePrefix)_asset] ([asset]) VALUES (@asset)";
-            $SQLResult = Write-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $AssetParameters;
-            Invoke-WebRequest -Uri $AssetData.href -OutFile $OutFile;
+            #Check if the same asset already exist in DB.
+            $GetQuery = "SELECT [id], [asset] FROM [$($TablePrefix)_asset] WHERE [asset] = @asset";
+            $AssetParameters = @{
+                "@asset" = $AssetData.asset;
+            }
+            while (!(($ExistingAsset = Read-SQL -SQLConnection $SQLConnection -Query $GetQuery -SQLParameters $AssetParameters))) {
+                Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Downloading asset $OutFile.";
+                $Query = "INSERT INTO [$($TablePrefix)_asset] ([asset]) VALUES (@asset)";
+                $SQLResult = Write-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $AssetParameters;
+                Invoke-WebRequest -Uri $AssetData.href -OutFile $OutFile;
+            }
+
+            if (($ExistingAsset | Measure-Object).Count -ne 1) {
+                Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 4 -Text "Uneable to link asset $($AssetData.asset) to as there are multiple assets with the same asset. ID: $($ExistingAsset.id)";
+            }
+
+            # Get ID of the dishes that need to be linked to this asset.
+            $Query = "SELECT [id] FROM [$($TablePrefix)_dish] WHERE [location_id] = @locationid AND [year] = @Year AND [week] = @weeknumber AND [day] = @dayindex AND [type_id] = @typeid";
+            $DishParameters = @{
+                "@locationid" = $LocationID;
+                "@year" = $year;
+                "@weeknumber" = $Weeknumber;
+                "@dayindex" = $CurrentDayOFWeek;
+                "@typeid" = $TypeID;
+            }
+            $RelatedDishes = Read-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishParameters;
+
+            # Loop through each dish ID
+            foreach ($DishID in $RelatedDishes.id) {
+                $DishAssetParameters = @{
+                    "@dishid" = $DishID;
+                    "@assetid" = $ExistingAsset.id;
+                }
+                $Query = "
+                    MERGE INTO [$($TablePrefix)_dish_asset] AS target
+                    USING (SELECT @dishid AS [dish_id], @assetid AS [asset_id]) AS source
+                    ON target.[dish_id] = source.[dish_id] AND target.[asset_id] = source.[asset_id]
+                    WHEN MATCHED THEN
+                        UPDATE SET target.[dish_id] = source.[dish_id], target.[asset_id] = source.[asset_id]
+                    WHEN NOT MATCHED THEN
+                        INSERT ([dish_id], [asset_id])
+                        VALUES (source.[dish_id], source.[asset_id]);
+                    ";
+                $SQLResult = Write-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishAssetParameters;
+            }
         } else {
-            Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "Asset $outfile already exists.";
+            Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "No assets available for $($AssetData.Dish).";
         }
-
-        # Here we need to link the asset to the dish via lunch_dish_asset table.
-
-    } else {
-        Write-Log -LogPath $LogPath -LogRetention $LogRetention -Level 8 -Text "No assets available for $($_.Dish).";
     }
 }
 
