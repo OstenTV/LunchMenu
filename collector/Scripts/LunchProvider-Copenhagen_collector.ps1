@@ -2,7 +2,7 @@ $VerbosePreference = "Continue";
 Start-Transcript -Path "C:\TS\log\LunchProvider-Copenhagen_collector\script.log" -Append
 $LogPath = "C:\TS\log\LunchProvider-Copenhagen_collector";
 $LogRetention = New-TimeSpan -Start (Get-Date).AddYears(-10) -End (Get-Date);
-$AssetsDir = "D:\VirtualSites\LunchAPI\v2\assets";
+$AssetsDir = "D:\Assets\Guckenheimer";
 $DateFormat = "yyyy-MM-dd";
 $DateTimeUFormat = "%Y-%m-%d %T %Z";
 $SQLConnectionString = "Server=localhost;Database=FoodService;Encrypt=True;TrustServerCertificate=True;Integrated Security=SSPI"
