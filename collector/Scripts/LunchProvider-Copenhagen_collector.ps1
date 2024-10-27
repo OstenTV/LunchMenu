@@ -7,6 +7,7 @@ $DateFormat = "yyyy-MM-dd";
 $DateTimeUFormat = "%Y-%m-%d %T %Z";
 $SQLConnectionString = "Server=localhost;Database=FoodService;Encrypt=True;TrustServerCertificate=True;Integrated Security=SSPI"
 $TablePrefix = "lunch";
+$ProviderID = 1;
 
 $SQLConnection = New-Object System.Data.SqlClient.SqlConnection;
 $SQLConnection.ConnectionString = $SQLConnectionString;
@@ -130,7 +131,7 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
                 $TypeID = ($DishTypes | ? {$_.name -eq $TypeName}).id
                 
                 #Check if the same dish already exist in DB.
-                $Query = "SELECT [dish],[allergens] FROM [$($TablePrefix)_dish] WHERE [location_id] = @locationid AND [language_id] = @languageid AND [year] = @Year AND [week] = @weeknumber AND [day] = @dayindex AND [type_id] = @typeid AND [dish] = @dish AND [allergens] = @allergens AND [iterator] = @iterator";
+                $Query = "SELECT [dish],[allergens] FROM [$($TablePrefix)_dish] WHERE [location_id] = @locationid AND [language_id] = @languageid AND [year] = @Year AND [week] = @weeknumber AND [day] = @dayindex AND [type_id] = @typeid AND [dish] = @dish AND [allergens] = @allergens AND [iterator] = @iterator AND [provider_id] = @providerid";
                 $DishParameters = @{
                     "@locationid" = $LocationID;
                     "@languageid" = $LanguageID;
@@ -141,11 +142,12 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
                     "@dish" = $Dish.Dish;
                     "@allergens" = $Dish.Allergener;
                     "@iterator" = $Dish.Iterator;
+                    "@providerid" = $ProviderID;
                 }
                 
                 $ExistingDish = Read-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishParameters;
                 if (!($ExistingDish)) {
-                    $Query = "INSERT INTO [$($TablePrefix)_dish] ([location_id], [language_id], [year], [week], [day], [type_id], [dish], [allergens], [iterator]) VALUES (@locationid,@languageid,@Year,@weeknumber,@dayindex,@typeid,@dish,@allergens,@iterator)";
+                    $Query = "INSERT INTO [$($TablePrefix)_dish] ([location_id], [language_id], [year], [week], [day], [type_id], [dish], [allergens], [iterator], [provider_id]) VALUES (@locationid,@languageid,@Year,@weeknumber,@dayindex,@typeid,@dish,@allergens,@iterator,@providerid)";
                     $SQLResult = Write-SQL -SQLConnection $SQLConnection -Query $Query -SQLParameters $DishParameters;
                 }
 
