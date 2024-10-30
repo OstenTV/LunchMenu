@@ -4,6 +4,6 @@ $DstDir = "D:\VirtualSites\LunchAPI\v2\2.0.0"
 pushd $DstDir;
 
 &composer install
-&php artisan config:cache
+&php artisan optimize
 &php artisan migrate
 popd
