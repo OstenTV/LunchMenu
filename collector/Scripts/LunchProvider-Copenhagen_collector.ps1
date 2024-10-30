@@ -1,5 +1,4 @@
-$VerbosePreference = "Continue";
-Start-Transcript -Path "C:\TS\log\LunchProvider-Copenhagen_collector\script.log" -Append
+#Start-Transcript -Path "C:\TS\log\LunchProvider-Copenhagen_collector\script.log" -Append
 $LogPath = "C:\TS\log\LunchProvider-Copenhagen_collector";
 $LogRetention = New-TimeSpan -Start (Get-Date).AddYears(-10) -End (Get-Date);
 $AssetsDir = "D:\Assets\Guckenheimer";
@@ -75,6 +74,7 @@ function Write-SQL {
 }
 
 if ($env:USERNAME -like "admin*") {
+    $VerbosePreference = "Continue";
     Import-Module "C:\Users\$($env:USERNAME)\Documents\GitHub\LunchMenu\collector\Modules\LunchProvider\LunchProvider.psm1", "C:\Users\$($env:USERNAME)\Documents\GitHub\LunchMenu\collector\Modules\LogUtil\LogUtil.psm1" -Force;
 } else {
     Import-Module LunchProvider, LogUtil -Force;
@@ -218,4 +218,4 @@ if (($Result = Get-GuckenheimerLunchWeekhMenu)) {
 
 $SQLConnection.Close();
 
-Stop-Transcript
+#Stop-Transcript
