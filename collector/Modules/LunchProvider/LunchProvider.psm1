@@ -36,6 +36,7 @@ function Get-GuckenheimerLunchWeekhMenu {
     $HTML = $R.ParsedHtml;
 
     [int]$WeekNumber = $HTML.getElementsByClassName("menu-of-the-week")[0].Children[0].Children[0].Children[0].InnerText.Replace("Ugens menu ","");
+    if ($WeekNumber -eq 0) {return} # Menu is empty and we can't get any data.
     Write-Verbose "Detected weeknumber $WeekNumber";
 
     foreach ($Lang in $Language) {
