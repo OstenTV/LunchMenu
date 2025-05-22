@@ -60,7 +60,7 @@ function Get-GuckenheimerLunchWeekhMenu {
             Foreach ($string in $strings) {
         
                 # Extract the type
-                $type = ($string -split ":")[0] -replace 'â€¢ ', ''
+                $type = ($string -split ":")[0] -replace '• ', ''
                 Write-Verbose "Parsing $type";
 
                 # Split the dishes by '/'
