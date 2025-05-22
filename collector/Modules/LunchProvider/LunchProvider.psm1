@@ -1,4 +1,4 @@
-﻿
+
 function Get-GuckenheimerLunchWeekhMenu {
     
     [CmdletBinding()]
@@ -82,18 +82,21 @@ function Get-GuckenheimerLunchWeekhMenu {
                     
                     $S = $_;
                     $dish = $S.Trim() -replace ' \(.*', ''
-                    
-                    switch ($Lang)
-                    {
-                        0 {
-                            $allergener = $S.Trim() -replace '.*\( Allergener: (.*?) \).*', '$1'
+                    if ($dish[-1] -eq ')') {
+                        $dish = $dish.Substring(0,$dish.Length-1).Trim()
+                        $allergener = ""
+                    } else {
+                        switch ($Lang) {
+                            0 {
+                                $allergener = $S.Trim() -replace '.*\( Allergener: (.*?) \).*', '$1'
+                            }
+                            1 {
+                                $allergener = $S.Trim() -replace '.*\( Allergens: (.*?) \).*', '$1'
+                            }
+                            Default {}
                         }
-                        1 {
-                            $allergener = $S.Trim() -replace '.*\( Allergens: (.*?) \).*', '$1'
-                        }
-                        Default {}
                     }
-                    
+
                     $FlatMenu += [PSCustomObject]@{
                         Day = $DayName.Trim()
                         Type = $type
