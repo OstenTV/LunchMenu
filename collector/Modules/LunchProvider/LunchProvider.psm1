@@ -64,7 +64,7 @@ function Get-GuckenheimerLunchWeekhMenu {
                 Write-Verbose "Parsing $type";
 
                 # Split the dishes by '/'
-                $dishes = ($string -split ':', 2)[1] -split "\) / " | ForEach-Object {
+                $dishes = ($string -split ':', 2)[1] -split "\) /" | ForEach-Object {
                     $str = $_.Trim();
                     if (!($str -match '\)$')) {
                         $str + " )";
