@@ -1,4 +1,4 @@
-﻿
+
 function Get-GuckenheimerLunchWeekhMenu {
     
     [CmdletBinding()]
@@ -36,6 +36,7 @@ function Get-GuckenheimerLunchWeekhMenu {
     $HTML = $R.ParsedHtml;
 
     [int]$WeekNumber = $HTML.getElementsByClassName("menu-of-the-week")[0].Children[0].Children[0].Children[0].InnerText.Replace("Ugens menu ","");
+    if ($WeekNumber -eq 0) {return} # Menu is empty and we can't get any data.
     Write-Verbose "Detected weeknumber $WeekNumber";
 
     foreach ($Lang in $Language) {
@@ -59,11 +60,11 @@ function Get-GuckenheimerLunchWeekhMenu {
             Foreach ($string in $strings) {
         
                 # Extract the type
-                $type = ($string -split ":")[0] -replace '• ', ''
+                $type = ($string -split ":")[0] -replace '� ', ''
                 Write-Verbose "Parsing $type";
 
                 # Split the dishes by '/'
-                $dishes = ($string -split ':', 2)[1] -split "\) / " | ForEach-Object {
+                $dishes = ($string -split ':', 2)[1] -split "\) /" | ForEach-Object {
                     $str = $_.Trim();
                     if (!($str -match '\)$')) {
                         $str + " )";
@@ -81,18 +82,21 @@ function Get-GuckenheimerLunchWeekhMenu {
                     
                     $S = $_;
                     $dish = $S.Trim() -replace ' \(.*', ''
-                    
-                    switch ($Lang)
-                    {
-                        0 {
-                            $allergener = $S.Trim() -replace '.*\( Allergener: (.*?) \).*', '$1'
+                    if ($dish[-1] -eq ')') {
+                        $dish = $dish.Substring(0,$dish.Length-1).Trim()
+                        $allergener = ""
+                    } else {
+                        switch ($Lang) {
+                            0 {
+                                $allergener = $S.Trim() -replace '.*\( Allergener: (.*?) \).*', '$1'
+                            }
+                            1 {
+                                $allergener = $S.Trim() -replace '.*\( Allergens: (.*?) \).*', '$1'
+                            }
+                            Default {}
                         }
-                        1 {
-                            $allergener = $S.Trim() -replace '.*\( Allergens: (.*?) \).*', '$1'
-                        }
-                        Default {}
                     }
-                    
+
                     $FlatMenu += [PSCustomObject]@{
                         Day = $DayName.Trim()
                         Type = $type
